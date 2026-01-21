@@ -1,0 +1,8 @@
+Model,Number_of_Genes
+Elastic_Net,77
+RF_MDA_Top50,50
+RF_SHAP_Top20,20
+XGBoost_Gain_Positive,30
+Boruta,167
+Boruta_RF_SHAP_Top20,20
+Union,207
