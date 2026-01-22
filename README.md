@@ -1,4 +1,7 @@
 # Knowledge-Constrained Machine Learning (KC-ML)
+<p align="center">
+  <img src="Figure1_Workflow.png" width="800" alt="KC-ML Workflow">
+</p>
 
 The **KC-ML framework** integrates biological priors (pathway enrichment and protein-protein interactions) as soft constraints into multi-model machine learning. This approach decouples biological knowledge from model architecture, improving feature stability and cross-cohort generalizability in high-dimensional transcriptomic prediction.
 
@@ -19,6 +22,21 @@ pip install "numpy<1.24"
 
 ---
 
+## 🚀 Key Features & Performance
+
+**KC-ML enhances feature stability and robustness.** 
+Unlike unweighted models that suffer from performance degradation in small sample sizes, KC-ML maintains high predictive accuracy and consensus stability.
+
+<!-- 这里插入 Figure 6：展示硬核实力 -->
+<p align="center">
+  <img src="Figure6_Robustness.png" width="800" alt="Robustness Analysis">
+</p>
+
+*   **Panel A**: KC-ML improves consensus gene identification across cohorts.
+*   **Panel B**: Superior AUC performance compared to ML-only approaches.
+*   **Panel C**: Consistent robustness even with reduced training sample sizes (Ablation study).
+
+---
 ## 2. Equal-weight machine learning (Equal-ML)
 
 Equal-ML serves as a purely data-driven baseline in which all genes are treated as equally informative and no biological prior knowledge is applied.
