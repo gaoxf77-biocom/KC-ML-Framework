@@ -3,7 +3,7 @@
   <img src="Figure1_Workflow.png" width="800" alt="KC-ML Workflow">
 </p>
 
-The **KC-ML framework** integrates biological priors (pathway enrichment and protein-protein interactions) as soft constraints into multi-model machine learning. This approach decouples biological knowledge from model architecture, improving feature stability and cross-cohort generalizability in high-dimensional transcriptomic prediction.
+The **KC-ML framework** integrates biological priors (enrichment analysis and protein-protein interactions) as soft constraints into multi-model machine learning. This approach decouples biological knowledge from model architecture, improving feature stability and cross-cohort generalizability in high-dimensional transcriptomic prediction.
 
 This repository provides the core implementation of the Equal-weight Machine Learning (Equal-ML) and Knowledge-Constrained Machine Learning (KC-ML) frameworks described in the accompanying paper. The code enables reproduction of the key methodological results related to feature weighting, multi-model consensus learning, and cross-cohort validation.
 
@@ -36,7 +36,7 @@ Unlike unweighted models that suffer from performance degradation in small sampl
 </p>
 
 *   **Panel A**: KC-ML improves consensus gene identification across cohorts.
-*   **Panel B**: Superior AUC performance compared to ML-only approaches.
+*   **Panel B**: Superior AUC performance compared to Equal-ML approaches.
 *   **Panel C**: Consistent robustness even with reduced training sample sizes (Ablation study).
 
 ---
