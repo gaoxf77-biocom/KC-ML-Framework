@@ -10,7 +10,7 @@ This repository provides the core implementation of the Equal-weight Machine Lea
 ---
 
 ## 1. Environment setup
-    ** Operating System:** The code was developed and tested on Windows 10. It is also compatible with Linux (e.g., Ubuntu 20.04) and macOS environments.
+    ** Operating System:** The code was developed and tested on Windows 10/11. It is also compatible with Linux (e.g., Ubuntu 20.04) and macOS environments.
     ** Python Version:** Python 3.9
     ** Hardware:** Standard desktop computer (No GPU required for tabular data training).
 
