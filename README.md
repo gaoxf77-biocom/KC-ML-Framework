@@ -28,14 +28,14 @@ pip install "numpy<1.24"
 ## 🚀 Key Features & Performance
 
 **KC-ML enhances feature stability and robustness.** 
-Unlike unweighted models that suffer from performance degradation in small sample sizes, KC-ML maintains high predictive accuracy and consensus stability.
+Unlike unweighted models that suffer from performance degradation in small sample sizes, KC-ML maintains high predictive accuracy and stability.
 
 <!-- 这里插入 Figure 6：展示硬核实力 -->
 <p align="center">
   <img src="Figure6_Robustness.png" width="800" alt="Robustness Analysis">
 </p>
 
-*   **Panel A**: KC-ML improves consensus gene identification across cohorts.
+*   **Panel A**: KC-ML reduces the inclusion of potentially unstable or method-specific.
 *   **Panel B**: Superior AUC performance compared to Equal-ML approaches.
 *   **Panel C**: Consistent robustness even with reduced training sample sizes (Ablation study).
 
