@@ -1,3 +1,3 @@
-Cohort,Best_Performing_Method,Best_AUC,ML_Baseline_AUC,Improvement_Over_ML,Sample_Size,Genes_Used,Performance_Category
-GSE81622,Bio_only,0.909,0.813,0.096,40,271,Excellent
-GSE61635,KC_ML,0.941,0.86,0.081,129,56,Excellent
+Cohort,Best_Performing_Method,Best_AUC,Equal-ML_Baseline_AUC,Improvement_Over_Equal-ML,Sample_Size,Genes_Used,Performance_Category
+GSE81622,Bio-only,0.899,0.813,0.086,40,91,Good
+GSE61635,KC-ML,0.941,0.86,0.081,129,56,Excellent

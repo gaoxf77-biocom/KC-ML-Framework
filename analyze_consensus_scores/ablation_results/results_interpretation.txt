@@ -5,28 +5,28 @@ ABLATION STUDY RESULTS SUMMARY
 OVERVIEW:
 - Total comparisons: 6
 - Cohorts analyzed: 2
-- Methods compared: ML, KC_ML, Bio_only
+- Methods compared: Equal-ML, KC-ML, Bio-only
 
 COHORT-SPECIFIC RESULTS:
 ----------------------------------------
 
 GSE81622:
-  * Best method: Bio_only
-  * AUC: 0.909 (Excellent)
-  * Improvement over ML: +0.096
+  * Best method: Bio-only
+  * AUC: 0.899 (Good)
+  * Improvement over Equal-ML: +0.086
   * Sample size: 40
-  * Genes used: 271
+  * Genes used: 91
 
 GSE61635:
-  * Best method: KC_ML
+  * Best method: KC-ML
   * AUC: 0.941 (Excellent)
-  * Improvement over ML: +0.081
+  * Improvement over Equal-ML: +0.081
   * Sample size: 129
   * Genes used: 56
 
 GLOBAL OBSERVATIONS:
 ----------------------------------------
-* Overall best performance: KC_ML on GSE61635 (AUC = 0.941)
-* ML average AUC: 0.837
-* KC_ML average AUC: 0.900
-* Bio_only average AUC: 0.905
+* Overall best performance: KC-ML on GSE61635 (AUC = 0.941)
+* Equal-ML average AUC: 0.837
+* KC-ML average AUC: 0.900
+* Bio-only average AUC: 0.917
