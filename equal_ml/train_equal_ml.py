@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 # ==============================================================================
 # Machine Learning for Key Gene Selection (Comprehensive Analysis Pipeline)
-# Python Version 12 (Final Stable Version)
-#
-# This script is designed to run in a controlled environment to ensure library
 # ==============================================================================
 
 import os
@@ -48,49 +45,374 @@ if not os.path.exists(RESULTS_DIR):
     os.makedirs(RESULTS_DIR)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- Helper Functions ---
-def save_plot(filename, tight_layout=True):
-    if tight_layout: plt.tight_layout()
-    plt.savefig(os.path.join(RESULTS_DIR, filename), dpi=300)
+# --- Nature style general settings ---
+plt.rcParams.update({
+    'font.family': 'sans-serif',
+    'font.sans-serif': ['Arial', 'Helvetica', 'DejaVu Sans'],
+    'mathtext.fontset': 'stix',  
+    'font.size': 12,
+    'axes.labelsize': 14,
+    'axes.titlesize': 13,
+    'axes.titleweight': 'bold',
+    'xtick.labelsize': 12,
+    'ytick.labelsize': 12,
+    'legend.fontsize': 9,
+    'legend.frameon': False,
+    'figure.titlesize': 13,
+    'figure.titleweight': 'bold',
+    'savefig.dpi': 300,
+    'savefig.bbox': 'tight',
+    'savefig.pad_inches': 0.1
+})
+
+# --- Nature style save function ---
+def save_nature_plot(filename, tight_layout=True, formats=['.png', '.pdf', '.svg']):
+    """Save Nature style images, supports multiple formats"""
+    if tight_layout: 
+        plt.tight_layout()
+    
+    for ext in formats:
+        save_path = os.path.join(RESULTS_DIR, f"{filename}{ext}")
+        plt.savefig(save_path, dpi=300 if ext == '.png' else None)
+    
     plt.close('all')
 
-def plot_confusion_matrix(y_true, y_pred, classes, model_name):
+# --- Nature style plotting functions ---
+def plot_nature_confusion_matrix(y_true, y_pred, classes, model_name):
+    """Nature style confusion matrix"""
     cm = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=(7, 5)); sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes)
-    plt.xlabel('Predicted Label'); plt.ylabel('True Label'); plt.title(f'{model_name} Confusion Matrix (Test Set)')
-    save_plot(f'confusion_matrix_{model_name.lower().replace(" ", "_")}.png')
+    
+    fig, ax = plt.subplots(figsize=(5, 4))
+    
+    # Use seaborn heatmap
+    sns.heatmap(
+        cm, 
+        annot=True, 
+        fmt='d', 
+        cmap='Blues',
+        xticklabels=classes, 
+        yticklabels=classes,
+        cbar_kws={'shrink': 0.8},
+        linewidths=0.5,
+        linecolor='lightgray',
+        ax=ax
+    )
+    
+    # Label settings
+    ax.set_xlabel('Predicted Label', fontsize=12)
+    ax.set_ylabel('True Label', fontsize=12)
+    ax.set_title(f'{model_name} Confusion Matrix', fontsize=13, fontweight='bold', pad=10)
+    
+    # Hide top and right borders
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+    
+    save_nature_plot(f'confusion_matrix_{model_name.lower().replace(" ", "_")}_nature')
 
-def plot_pr_curve(y_true, y_prob, model_name, color):
+def plot_nature_pr_curve(y_true, y_prob, model_name, color):
+    """Nature style PR curve plot"""
     precision, recall, _ = precision_recall_curve(y_true, y_prob)
     ap_score = average_precision_score(y_true, y_prob)
-    plt.figure(figsize=(8, 8)); ax = plt.gca(); ax.set_aspect('equal', adjustable='box')
-    plt.plot(recall, precision, color=color, lw=2.5, label=f'AP = {ap_score:.3f}')
-    plt.xlabel('Recall (Sensitivity)'); plt.ylabel('Precision'); plt.title(f'{model_name} Precision-Recall Curve (Test Set)')
-    plt.grid(linestyle=':'); plt.legend(); plt.xlim([-0.01, 1.01]); plt.ylim([-0.01, 1.01])
-    save_plot(f'pr_curve_{model_name.lower().replace(" ", "_")}.png')
+    
+    # Compute baseline (random classifier performance)
+    baseline_precision = np.mean(y_true)
+    
+    # Compute bootstrap confidence intervals
+    def bootstrap_ap(y_true, y_prob, n_bootstrap=2000, random_state=123):
+        np.random.seed(random_state)
+        n_samples = len(y_true)
+        bootstrap_scores = []
+        
+        for _ in range(n_bootstrap):
+            indices = np.random.choice(range(n_samples), size=n_samples, replace=True)
+            y_true_sample = y_true.iloc[indices] if hasattr(y_true, 'iloc') else y_true[indices]
+            y_prob_sample = y_prob.iloc[indices] if hasattr(y_prob, 'iloc') else y_prob[indices]
+            
+            if len(np.unique(y_true_sample)) < 2:
+                continue
+            ap = average_precision_score(y_true_sample, y_prob_sample)
+            bootstrap_scores.append(ap)
+        
+        bootstrap_scores = np.array(bootstrap_scores)
+        ci_low = np.percentile(bootstrap_scores, 2.5) if len(bootstrap_scores) > 0 else ap_score
+        ci_high = np.percentile(bootstrap_scores, 97.5) if len(bootstrap_scores) > 0 else ap_score
+        return ci_low, ci_high
+    
+    # Compute confidence intervals
+    ci_low, ci_high = bootstrap_ap(y_true, y_prob, n_bootstrap=2000, random_state=RANDOM_STATE)
+    
+    # Create Nature style plot
+    fig, ax = plt.subplots(figsize=(4.5, 4.5))
+    
+    # Plot PR curve
+    ax.plot(recall, precision, lw=2.5, color=color, label=f'{model_name}')
+    
+    # Random baseline
+    ax.axhline(y=baseline_precision, color='black', linestyle='--', 
+               lw=1.5, alpha=0.6, label=f'Random (AP={baseline_precision:.3f})')
+    
+    # Axis settings
+    ax.set_xlim(-0.05, 1.01)
+    ax.set_ylim(-0.05, 1.01)
+    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+    
+    # Labels
+    ax.set_xlabel("Recall (Sensitivity)", fontsize=12)
+    ax.set_ylabel("Precision (PPV)", fontsize=12)
+    
+    # AP + CI annotation
+    text = f"AP = {ap_score:.3f}\n95% CI: {ci_low:.3f}–{ci_high:.3f}"
+    ax.text(0.55, 0.12, text, fontsize=10, ha="left", va="center", 
+            transform=ax.transAxes, bbox=dict(boxstyle="round,pad=0.3", 
+            facecolor='white', alpha=0.8, edgecolor='lightgray'))
+    
+    # Hide top and right borders
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+    
+    # Legend
+    ax.legend(frameon=False, fontsize=9, loc='lower left')
+    
+    # Title
+    ax.set_title(f'{model_name} Precision-Recall Curve', fontsize=13, fontweight='bold')
+    
+    save_nature_plot(f'pr_curve_{model_name.lower().replace(" ", "_")}_nature')
 
-def plot_roc_curve(y_true, y_prob, model_name, color):
+def plot_nature_roc_curve(y_true, y_prob, model_name, color):
+    """Nature style ROC curve plot"""
     fpr, tpr, _ = roc_curve(y_true, y_prob)
     auc_score = roc_auc_score(y_true, y_prob)
-    bootstrapped_scores = [roc_auc_score(*resample(y_true, y_prob, random_state=i)) for i in range(100) if len(np.unique(resample(y_true, y_prob, random_state=i)[0])) > 1]
+    
+    # Bootstrap confidence intervals
+    bootstrapped_scores = []
+    for i in range(100):
+        y_true_res, y_prob_res = resample(y_true, y_prob, random_state=i)
+        if len(np.unique(y_true_res)) > 1:
+            bootstrapped_scores.append(roc_auc_score(y_true_res, y_prob_res))
+    
     lower = np.percentile(bootstrapped_scores, 2.5) if bootstrapped_scores else auc_score
     upper = np.percentile(bootstrapped_scores, 97.5) if bootstrapped_scores else auc_score
-    plt.figure(figsize=(8, 8)); ax = plt.gca(); ax.set_aspect('equal', adjustable='box')
-    plt.plot(fpr, tpr, color=color, lw=2.5)
-    plt.plot([0, 1], [0, 1], color='grey', lw=1, linestyle='--')
-    plt.xlabel("1 - Specificity"); plt.ylabel("Sensitivity"); plt.title(f'{model_name} ROC Curve (Test Set)')
-    plt.grid(color='lightgray', linestyle=':'); legend_text = f"AUC (95% CI)\n{auc_score:.2f} ({lower:.2f}-{upper:.2f})"
-    plt.legend([plt.Line2D([0], [0], color=color, lw=2.5)], [legend_text], loc='lower right', frameon=False)
-    save_plot(f'roc_curve_{model_name.lower().replace(" ", "_")}.png')
-    return {'fpr': fpr, 'tpr': tpr, 'auc': auc_score}
+    
+    # Create Nature style plot
+    fig, ax = plt.subplots(figsize=(4.5, 4.5))
+    
+    # Plot ROC curve
+    ax.plot(fpr, tpr, lw=2.5, color=color, label=model_name)
+    ax.plot([0, 1], [0, 1], 'k--', lw=1.5, alpha=0.6, label='Random')
+    
+    # Axis settings
+    ax.set_xlim(-0.05, 1.01)
+    ax.set_ylim(-0.05, 1.01)
+    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+    
+    # Labels
+    ax.set_xlabel("False Positive Rate", fontsize=12)
+    ax.set_ylabel("True Positive Rate", fontsize=12)
+    
+    # AUC + CI annotation
+    text = f"AUC = {auc_score:.3f}\n95% CI: {lower:.3f}–{upper:.3f}"
+    ax.text(0.55, 0.12, text, fontsize=10, ha="left", va="center", 
+            transform=ax.transAxes, bbox=dict(boxstyle="round,pad=0.3", 
+            facecolor='white', alpha=0.8, edgecolor='lightgray'))
+    
+    # Hide top and right borders
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+    
+    # Legend
+    ax.legend(frameon=False, fontsize=9, loc='lower right')
+    
+    # Title
+    ax.set_title(f'{model_name} ROC Curve', fontsize=13, fontweight='bold')
+    
+    save_nature_plot(f'roc_curve_{model_name.lower().replace(" ", "_")}_nature')
+    
+    return {'fpr': fpr, 'tpr': tpr, 'auc': auc_score, 'ci': (lower, upper)}
+
+def plot_nature_performance_comparison_with_std(df_test, df_cv=None):
+    """Nature style model performance comparison plot (with cross-validation standard deviation)"""
+    fig, ax = plt.subplots(figsize=(12, 7))
+    
+    # Prepare data
+    models = df_test['Model'].unique()
+    metrics = ['Accuracy', 'AUC', 'Precision', 'Recall', 'F1-Score', 'MCC']
+    
+    # Set bar chart parameters
+    n_models = len(models)
+    n_metrics = len(metrics)
+    bar_width = 0.8 / n_models
+    x_positions = np.arange(n_metrics)
+    
+    # Define colors
+    colors = plt.cm.viridis(np.linspace(0.2, 0.8, n_models))
+    
+    # Draw bars for each model
+    for i, model in enumerate(models):
+        # Get test set performance for current model
+        model_data = df_test[df_test['Model'] == model]
+        
+        # Extract values for each metric
+        scores = []
+        error_bars = []
+        
+        for metric in metrics:
+            score = model_data[metric].values[0] if metric in model_data.columns else np.nan
+            scores.append(score)
+            
+            # If cross-validation data exists, get standard deviation
+            if df_cv is not None and f'Std_{metric.lower()}' in df_cv.columns:
+                std_model_data = df_cv[df_cv['Model'] == model]
+                error = std_model_data[f'Std_{metric.lower()}'].values[0] if len(std_model_data) > 0 else 0
+                error_bars.append(error)
+            else:
+                error_bars.append(0)
+        
+        # Calculate bar positions
+        x_offset = i * bar_width - (n_models - 1) * bar_width / 2
+        
+        # Draw bars
+        bars = ax.bar(
+            x_positions + x_offset,
+            scores,
+            bar_width * 0.9,
+            color=colors[i],
+            alpha=0.8,
+            label=model,
+            yerr=error_bars if any(error_bars) else None,
+            error_kw={'ecolor': 'black', 'linewidth': 1, 'capthick': 2, 'capsize': 4}
+        )
+        
+        # Add value labels on top of bars
+        for j, (score, error) in enumerate(zip(scores, error_bars)):
+            if not np.isnan(score):
+                label = f'{score:.3f}'
+                if error > 0:
+                    label += f' ± {error:.3f}'
+                ax.text(
+                    x_positions[j] + x_offset,
+                    score + error + 0.02,
+                    label,
+                    ha='center',
+                    va='bottom',
+                    fontsize=8,
+                    rotation=0
+                )
+    
+    # Set X-axis labels
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(metrics, fontsize=11)
+    
+    # Set Y-axis
+    ax.set_ylabel("Score", fontsize=12)
+    ax.set_ylim(0, 1.1)
+    ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    
+    # Title
+    ax.set_title("Model Performance Comparison (Test Set with CV Standard Deviation)", 
+                fontsize=13, fontweight='bold', pad=20)
+    
+    # Hide top and right borders
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+    
+    # Legend
+    ax.legend(frameon=False, fontsize=9, bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    # Add grid lines
+    ax.grid(True, alpha=0.1, axis='y', linestyle='-', linewidth=0.5)
+    
+    plt.tight_layout()
+    save_nature_plot("model_performance_comparison_with_std_nature")
+
+def plot_nature_combined_roc(roc_data):
+    """Nature style combined ROC curves plot"""
+    if not roc_data:
+        return
+    
+    # Color definitions
+    colors = {
+        "Elastic_Net": "#E41A1C",  # Nature red
+        "RF_Weighted": "#4DAF4A",  # Nature green
+        "XGBoost": "#984EA3",      # Nature purple
+        "Boruta_RF": "#FF7F00"     # Nature orange
+    }
+    
+    fig, ax = plt.subplots(figsize=(5, 5))
+    
+    # Plot ROC curves for each model
+    for name, data in roc_data.items():
+        if name in colors:
+            ax.plot(data['fpr'], data['tpr'], 
+                   lw=2, 
+                   color=colors.get(name, 'gray'),
+                   label=f"{name} (AUC = {data['auc']:.3f})")
+    
+    # Random reference line
+    ax.plot([0, 1], [0, 1], 'k--', lw=1.5, alpha=0.6, label='Random')
+    
+    # Axis settings
+    ax.set_xlim(-0.05, 1.01)
+    ax.set_ylim(-0.05, 1.01)
+    ax.set_aspect('equal')
+    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+    
+    # Labels
+    ax.set_xlabel("False Positive Rate", fontsize=13)
+    ax.set_ylabel("True Positive Rate", fontsize=13)
+    
+    # Title
+    ax.set_title("ROC Curves Comparison (Test Set)", fontsize=14, fontweight='bold', pad=10)
+    
+    # Hide top and right borders
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+    
+    # Legend
+    ax.legend(frameon=False, fontsize=9, loc='lower right')
+    
+    save_nature_plot("combined_roc_curves_nature")
 
 def get_performance_report(y_true, y_pred, y_prob, model_name):
     return {'Model': model_name, 'Accuracy': accuracy_score(y_true, y_pred), 'AUC': roc_auc_score(y_true, y_prob),
             'Precision': precision_score(y_true, y_pred, zero_division=0), 'Recall': recall_score(y_true, y_pred, zero_division=0),
             'F1-Score': f1_score(y_true, y_pred, zero_division=0), 'MCC': matthews_corrcoef(y_true, y_pred)}
 
+def check_data_leakage(X_train, X_test):
+    """Simple test for data leakage"""
+    logging.info("Checking for data leakage...")
+    
+    # Check if features are the same
+    if set(X_train.columns) != set(X_test.columns):
+        logging.warning("⚠️ Warning: Training and test set features differ")
+    else:
+        logging.info("✓ Training and test set features are the same")
+    
+    # Check if standardization is independent
+    train_mean = X_train.mean()
+    test_mean = X_test.mean()
+    
+    # If standardization is independent, test set mean should be close to 0
+    if abs(test_mean.mean()) > 0.1:  # Adjustable threshold
+        logging.warning(f"⚠️ Warning: Test set mean not zero, possible leakage: {test_mean.mean():.3f}")
+    else:
+        logging.info(f"✓ Test set standardization normal: mean={test_mean.mean():.3f}")
+    
+    # Check for extreme values
+    train_max = X_train.max().max()
+    test_max = X_test.max().max()
+    if train_max > 10 or test_max > 10:
+        logging.warning(f"⚠️ Warning: Extreme values found, check standardization: train_max={train_max:.1f}, test_max={test_max:.1f}")
+    else:
+        logging.info(f"✓ Standardization range normal: train_max={train_max:.1f}, test_max={test_max:.1f}")
+    
+    return True
+
 def main():
-    logging.info("=== Starting Comprehensive Machine Learning Analysis ===")
+    logging.info("=== Starting Comprehensive Machine Learning Analysis (FIXED VERSION) ===")
+    logging.info("Data leakage fixed: preprocessing steps now fitted only on training set")
     
     # --- 1. Data Loading and Preprocessing ---
     logging.info("1. Reading and pre-processing data...")
@@ -100,20 +422,45 @@ def main():
     labels, expr_matrix = labels.loc[common_samples], expr_matrix[common_samples]
     le = LabelEncoder().fit(labels['Label'])
     X, y = expr_matrix.T, le.transform(labels['Label'])
-    selector = VarianceThreshold()
-    X = pd.DataFrame(selector.fit_transform(X), index=X.index, columns=X.columns[selector.get_support()])
-    scaler = StandardScaler()
-    X_scaled = pd.DataFrame(scaler.fit_transform(X), index=X.index, columns=X.columns)
     
-    # --- 2. Data Splitting & Imbalance Setup ---
-    logging.info("2. Splitting data and setting up imbalance parameters...")
-    X_train, X_test, y_train, y_test = train_test_split(
-    X_scaled, y, test_size=0.3, random_state=RANDOM_STATE, stratify=y
+    # --- 2. Data Splitting FIRST (critical fix) ---
+    logging.info("2. Splitting data FIRST (critical step to fix data leakage)...")
+    X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=RANDOM_STATE, stratify=y
     )
-
-    # Automatic calculation of class imbalance parameters
-    n_neg = (y_train == 0).sum()      # Negative class (0) count
-    n_pos = (y_train == 1).sum()      # Positive class (1) count
+    
+    # --- 3. Preprocessing fitted ONLY on training set (critical fix) ---
+    logging.info("3. Preprocessing: fitting ONLY on training set...")
+    
+    # Variance threshold selection
+    selector = VarianceThreshold()
+    X_train_selected = selector.fit_transform(X_train_raw)
+    X_test_selected = selector.transform(X_test_raw)
+    
+    # Get selected feature names
+    selected_features = X_train_raw.columns[selector.get_support()]
+    
+    # Standardization
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train_selected)
+    X_test_scaled = scaler.transform(X_test_selected)
+    
+    # Reconstruct DataFrame
+    X_train = pd.DataFrame(X_train_scaled, index=X_train_raw.index, columns=selected_features)
+    X_test = pd.DataFrame(X_test_scaled, index=X_test_raw.index, columns=selected_features)
+    
+    logging.info(f"Original features: {X.shape[1]}")
+    logging.info(f"Features after variance threshold: {X_train.shape[1]}")
+    logging.info(f"Training set shape: {X_train.shape}")
+    logging.info(f"Test set shape: {X_test.shape}")
+    
+    # Check data leakage
+    check_data_leakage(X_train, X_test)
+    
+    # --- 4. Handling imbalanced data ---
+    logging.info("4. Setting up imbalance parameters...")
+    n_neg = (y_train == 0).sum()
+    n_pos = (y_train == 1).sum()
     total = n_neg + n_pos
 
     logging.info(f"Training set class distribution -> Negative(0): {n_neg} ({n_neg/total:.1%}), "
@@ -156,13 +503,46 @@ def main():
         enet_model_final = enet_model_base.fit(X_train, y_train)
         y_pred, y_prob = enet_model_final.predict(X_test), enet_model_final.predict_proba(X_test)[:, 1]
         test_performance_reports.append(get_performance_report(y_test, y_pred, y_prob, 'Elastic_Net'))
-        plot_confusion_matrix(y_test, y_pred, le.classes_, 'Elastic Net'); plot_pr_curve(y_test, y_prob, 'Elastic Net', '#E41A1C')
-        roc_data['Elastic_Net'] = plot_roc_curve(y_test, y_prob, 'Elastic Net', '#E41A1C')
+        
+        # Nature style confusion matrix
+        plot_nature_confusion_matrix(y_test, y_pred, le.classes_, 'Elastic Net')
+        
+        # Nature style PR curve
+        plot_nature_pr_curve(pd.Series(y_test), pd.Series(y_prob), 'Elastic Net', '#E41A1C')
+        
+        # Nature style ROC curve
+        roc_data['Elastic_Net'] = plot_nature_roc_curve(y_test, y_prob, 'Elastic Net', '#E41A1C')
+        
         enet_genes = X_train.columns[enet_model_final.coef_[0] != 0].tolist()
         model_selections['Elastic_Net'] = set(enet_genes)
         pd.DataFrame({'Gene': enet_genes}).to_csv(os.path.join(RESULTS_DIR, "Elastic_Net_selected_genes.csv"), index=False)
         
-    except Exception as e: logging.error(f"Elastic Net failed: {e}")
+        logging.info("Performing SHAP analysis for Elastic Net...")
+        try:
+            explainer = shap.LinearExplainer(enet_model_final, X_train)
+            shap_values = explainer.shap_values(X_test)
+            
+            # Nature style SHAP plot
+            plt.figure(figsize=(6, 4))
+            shap.summary_plot(shap_values, X_test, show=False, plot_type="bar", max_display=20)
+            plt.title("Elastic Net SHAP Feature Importance", fontsize=13, fontweight='bold', pad=10)
+            for spine in plt.gca().spines.values():
+                spine.set_visible(False)
+            save_nature_plot("shap_summary_enet_bar_nature")
+            
+            plt.figure(figsize=(8, 6))
+            shap.summary_plot(shap_values, X_test, show=False, max_display=20)
+            plt.title("Elastic Net SHAP Beeswarm Plot", fontsize=13, fontweight='bold', pad=10)
+            for spine in plt.gca().spines.values():
+                spine.set_visible(False)
+            save_nature_plot("shap_summary_enet_beeswarm_nature")
+            
+            logging.info("✓ SHAP analysis for Elastic Net complete.")
+        except Exception as e:
+            logging.error(f"SHAP analysis for Elastic Net failed: {e}")
+    
+    except Exception as e: 
+        logging.error(f"Elastic Net failed: {e}")
     
     # ==============================================================================
     #  MODEL 2: RANDOM FOREST
@@ -184,8 +564,15 @@ def main():
         rf_model_final = rf_model_base.fit(X_train, y_train)
         y_pred, y_prob = rf_model_final.predict(X_test), rf_model_final.predict_proba(X_test)[:, 1]
         test_performance_reports.append(get_performance_report(y_test, y_pred, y_prob, 'RF_Weighted'))
-        plot_confusion_matrix(y_test, y_pred, le.classes_, 'Random Forest'); plot_pr_curve(y_test, y_prob, 'Random Forest', '#4DAF4A')
-        roc_data['RF_Weighted'] = plot_roc_curve(y_test, y_prob, 'Random Forest', '#4DAF4A')
+        
+        # Nature style confusion matrix
+        plot_nature_confusion_matrix(y_test, y_pred, le.classes_, 'Random Forest')
+        
+        # Nature style PR curve
+        plot_nature_pr_curve(pd.Series(y_test), pd.Series(y_prob), 'Random Forest', '#4DAF4A')
+        
+        # Nature style ROC curve
+        roc_data['RF_Weighted'] = plot_nature_roc_curve(y_test, y_prob, 'Random Forest', '#4DAF4A')
         
         mdg_imp = pd.DataFrame({'Gene': X_train.columns, 'MDG': rf_model_final.feature_importances_}).sort_values('MDG', ascending=False)
         mdg_imp.to_csv(os.path.join(RESULTS_DIR, "RF_MDG_importance.csv"), index=False)
@@ -202,24 +589,39 @@ def main():
         mda_imp.to_csv(os.path.join(RESULTS_DIR, "RF_MDA_importance.csv"), index=False)
         model_selections['RF_MDA_Top50'] = set(mda_imp.head(50)['Gene'])
     
-        logging.info("RF permutation importance computed using ROC-AUC scoring")
-        
-        # Keep RF SHAP analysis for gene selection but remove visualization
-        logging.info("Performing SHAP analysis for Random Forest (gene selection only)...")
+        logging.info("RF permutation importance computed using ROC-AUC scoring (gold standard method)")
+        logging.info("Performing SHAP analysis for Random Forest...")
         try:
             explainer = shap.TreeExplainer(rf_model_final)
             shap_values = explainer.shap_values(X_test)
-
+    
             mean_abs_shap_rf = np.abs(shap_values[1]).mean(axis=0)
             top20_idx_rf = np.argsort(mean_abs_shap_rf)[-20:]
             top20_genes_rf = X_train.columns[top20_idx_rf].tolist()
             model_selections['RF_SHAP_Top20'] = set(top20_genes_rf)
             logging.info("Random Forest SHAP Top20 genes added to consensus.")
             
+            # Nature style SHAP plot
+            plt.figure(figsize=(6, 4))
+            shap.summary_plot(shap_values[1], X_test, show=False, plot_type="bar", max_display=20)
+            plt.title("Random Forest SHAP Feature Importance", fontsize=13, fontweight='bold', pad=10)
+            for spine in plt.gca().spines.values():
+                spine.set_visible(False)
+            save_nature_plot("shap_summary_rf_bar_nature")
+            
+            plt.figure(figsize=(8, 6))
+            shap.summary_plot(shap_values[1], X_test, show=False, max_display=20)
+            plt.title("Random Forest SHAP Beeswarm Plot", fontsize=13, fontweight='bold', pad=10)
+            for spine in plt.gca().spines.values():
+                spine.set_visible(False)
+            save_nature_plot("shap_summary_rf_beeswarm_nature")
+            
+            logging.info("✓ SHAP analysis for Random Forest complete.")
         except Exception as e:
             logging.error(f"SHAP analysis for Random Forest failed: {e}")
     
-    except Exception as e: logging.error(f"Random Forest main process failed: {e}")
+    except Exception as e: 
+        logging.error(f"Random Forest main process failed: {e}")
     
     # ==============================================================================
     # MODEL 3: XGBOOST
@@ -251,9 +653,14 @@ def main():
         y_prob = xgb_model_final.predict_proba(X_test)[:, 1]
         test_performance_reports.append(get_performance_report(y_test, y_pred, y_prob, 'XGBoost'))
     
-        plot_confusion_matrix(y_test, y_pred, le.classes_, 'XGBoost')
-        plot_pr_curve(y_test, y_prob, 'XGBoost', '#984EA3')
-        roc_data['XGBoost'] = plot_roc_curve(y_test, y_prob, 'XGBoost', '#984EA3')
+        # Nature style confusion matrix
+        plot_nature_confusion_matrix(y_test, y_pred, le.classes_, 'XGBoost')
+        
+        # Nature style PR curve
+        plot_nature_pr_curve(pd.Series(y_test), pd.Series(y_prob), 'XGBoost', '#984EA3')
+        
+        # Nature style ROC curve
+        roc_data['XGBoost'] = plot_nature_roc_curve(y_test, y_prob, 'XGBoost', '#984EA3')
     
         logging.info("Extracting XGBoost features with positive Gain importance...")
         try:
@@ -270,6 +677,30 @@ def main():
     
         except Exception as e:
             logging.error(f"Failed to extract XGBoost Gain importance: {e}")
+    
+        logging.info("Performing SHAP analysis for XGBoost (for visualization only)...")
+        try:
+            explainer = shap.TreeExplainer(xgb_model_final)
+            shap_values = explainer.shap_values(X_test)
+            
+            # Nature style SHAP plot
+            plt.figure(figsize=(6, 4))
+            shap.summary_plot(shap_values, X_test, show=False, plot_type="bar", max_display=20)
+            plt.title("XGBoost SHAP Feature Importance", fontsize=13, fontweight='bold', pad=10)
+            for spine in plt.gca().spines.values():
+                spine.set_visible(False)
+            save_nature_plot("shap_summary_xgb_bar_nature")
+            
+            plt.figure(figsize=(8, 6))
+            shap.summary_plot(shap_values, X_test, show=False, max_display=20)
+            plt.title("XGBoost SHAP Beeswarm Plot", fontsize=13, fontweight='bold', pad=10)
+            for spine in plt.gca().spines.values():
+                spine.set_visible(False)
+            save_nature_plot("shap_summary_xgb_beeswarm_nature")
+            
+            logging.info("✓XGBoost SHAP plots generated.")
+        except Exception as e:
+            logging.error(f"SHAP analysis for XGBoost failed: {e}")
     
     except Exception as e:
         logging.error(f"XGBoost main process failed: {e}")
@@ -329,22 +760,42 @@ def main():
             y_prob = rf_model_final.predict_proba(X_test_boruta)[:, 1]
             test_performance_reports.append(get_performance_report(y_test, y_pred, y_prob, 'Boruta_RF'))
     
-            plot_confusion_matrix(y_test, y_pred, le.classes_, 'Boruta+RF')
-            plot_pr_curve(y_test, y_prob, 'Boruta+RF', '#FF7F00')
-            roc_data['Boruta_RF'] = plot_roc_curve(y_test, y_prob, 'Boruta+RF', '#FF7F00')
+            # Nature style confusion matrix
+            plot_nature_confusion_matrix(y_test, y_pred, le.classes_, 'Boruta+RF')
+            
+            # Nature style PR curve
+            plot_nature_pr_curve(pd.Series(y_test), pd.Series(y_prob), 'Boruta+RF', '#FF7F00')
+            
+            # Nature style ROC curve
+            roc_data['Boruta_RF'] = plot_nature_roc_curve(y_test, y_prob, 'Boruta+RF', '#FF7F00')
     
-            # Keep Boruta+RF SHAP analysis for gene selection but remove visualization
-            logging.info("Performing SHAP analysis for Boruta+RF model (gene selection only)...")
+            logging.info("Performing SHAP analysis for Boruta+RF model...")
             try:
                 explainer = shap.TreeExplainer(rf_model_final)
                 shap_values = explainer.shap_values(X_test_boruta)
-
+    
                 mean_abs_shap = np.abs(shap_values[1]).mean(axis=0)
                 top20_idx = np.argsort(mean_abs_shap)[-20:]
                 top20_genes = X_test_boruta.columns[top20_idx].tolist()
                 model_selections['Boruta_RF_SHAP_Top20'] = set(top20_genes)
                 logging.info("Boruta+RF SHAP Top20 genes added to consensus voting.")
                 
+                # Nature style SHAP plot
+                plt.figure(figsize=(6, 4))
+                shap.summary_plot(shap_values[1], X_test_boruta, show=False, plot_type="bar", max_display=20)
+                plt.title("Boruta+RF SHAP Feature Importance", fontsize=13, fontweight='bold', pad=10)
+                for spine in plt.gca().spines.values():
+                    spine.set_visible(False)
+                save_nature_plot("shap_summary_boruta_rf_bar_nature")
+                
+                plt.figure(figsize=(8, 6))
+                shap.summary_plot(shap_values[1], X_test_boruta, show=False, max_display=20)
+                plt.title("Boruta+RF SHAP Beeswarm Plot", fontsize=13, fontweight='bold', pad=10)
+                for spine in plt.gca().spines.values():
+                    spine.set_visible(False)
+                save_nature_plot("shap_summary_boruta_rf_beeswarm_nature")
+                
+                logging.info("✓SHAP analysis for Boruta+RF complete.")
             except Exception as e:
                 logging.error(f"SHAP analysis for Boruta+RF failed: {e}")
         else:
@@ -365,13 +816,12 @@ def main():
         df_test = pd.DataFrame(test_performance_reports)
         df_test.to_csv(os.path.join(RESULTS_DIR, "test_set_performance_report.csv"), index=False)
         logging.info(f"\n--- Final Hold-out Test Set Performance ---\n{df_test.round(4)}")
-        df_melted = df_test.melt(id_vars='Model', var_name='Metric', value_name='Score')
-        plt.figure(figsize=(15, 8)); sns.barplot(x='Metric', y='Score', hue='Model', data=df_melted, palette='viridis')
-        plt.title("Comprehensive Model Performance Comparison (Test Set)", fontsize=16)
-        save_plot("final_performance_comparison_detailed.png")
+        
+        # Performance comparison plot with standard deviation
+        plot_nature_performance_comparison_with_std(df_test, df_cv if 'df_cv' in locals() else None)
 
     # ==============================================================================
-    # MODEL CONSENSUS ANALYSIS + UpSet Plot
+    # MODEL CONSENSUS ANALYSIS + Nature style UpSet Plot
     # ==============================================================================
     logging.info("--- Performing Model Consensus Analysis ---")
     try:
@@ -389,62 +839,14 @@ def main():
             consensus_df.to_csv(os.path.join(RESULTS_DIR, "model_consensus_gene_report.csv"), index=False)
             logging.info(f"Consensus report saved. Top genes:\n{consensus_df.head(10)[['Gene', 'Consensus_Score']]}")
 
-            # Generate comprehensive gene lists table
-            logging.info("--- Generating Comprehensive Gene Lists Table ---")
-            
-            expected_models = [
-                'Elastic_Net',
-                'RF_MDA_Top50', 
-                'RF_SHAP_Top20',
-                'XGBoost_Gain_Positive',
-                'Boruta',
-                'Boruta_RF_SHAP_Top20'
-            ]
-            
-            all_genes_dict = {}
-            max_length = 0
-            
-            for model_name in expected_models:
-                if model_name in model_selections:
-                    gene_list = list(model_selections[model_name])
-                else:
-                    gene_list = []
-                    logging.warning(f"Model {model_name} not found in model_selections, using empty list")
-                
-                all_genes_dict[model_name] = gene_list
-                max_length = max(max_length, len(gene_list))
-            
-            union_genes = set()
-            for gene_list in all_genes_dict.values():
-                union_genes.update(gene_list)
-            all_genes_dict['Union'] = list(union_genes)
-            max_length = max(max_length, len(union_genes))
-            
-            gene_lists_df = pd.DataFrame()
-            
-            for col_name, gene_list in all_genes_dict.items():
-                padded_list = gene_list + [''] * (max_length - len(gene_list))
-                gene_lists_df[col_name] = padded_list
-            
-            output_path = os.path.join(RESULTS_DIR, "all_model_gene_lists.csv")
-            gene_lists_df.to_csv(output_path, index=False)
-            logging.info(f"Comprehensive gene lists table saved to: {output_path}")
-            
-            stats_df = pd.DataFrame({
-                'Model': list(all_genes_dict.keys()),
-                'Number_of_Genes': [len(gene_list) for gene_list in all_genes_dict.values()]
-            })
-            stats_path = os.path.join(RESULTS_DIR, "model_gene_counts.csv")
-            stats_df.to_csv(stats_path, index=False)
-            logging.info(f"Gene counts by model:\n{stats_df.to_string(index=False)}")
-
-# UpSet Plot
+            # Nature style UpSet Plot - fixed version
             try:
                 from upsetplot import UpSet, from_contents
 
+                # Convert sets to lists
                 upset_data = from_contents({name: list(genes) for name, genes in valid_sets.items()})
                 
-                fig = plt.figure(figsize=(14, 9))
+                # Create UpSet object
                 upset = UpSet(
                     upset_data,
                     subset_size='count',
@@ -452,44 +854,244 @@ def main():
                     sort_by='cardinality',
                     sort_categories_by='cardinality',
                     facecolor='steelblue',
-                    shading_color='lightgray'
+                    shading_color='lightgray',
+                    element_size=40
                 )
+                
+                # Create figure
+                fig = plt.figure(figsize=(10, 6))
                 upset.plot(fig=fig)
-                plt.suptitle("Key Gene Intersections Across Multiple Models (UpSet Plot)", fontsize=18, y=0.98)
-                save_plot("Key_Gene_Intersection_UpSet_Plot.png")
-                logging.info("UpSet plot generated successfully!")
-
+                
+                # Set title
+                fig.suptitle("Key Gene Intersections Across Multiple Models", 
+                           fontsize=13, fontweight='bold', y=0.98)
+                
+                # Adjust layout
+                plt.tight_layout()
+                
+                # Save figure
+                for ext in ['.png', '.pdf']:
+                    plt.savefig(os.path.join(RESULTS_DIR, f"Key_Gene_Intersection_UpSet_Plot_nature{ext}"),
+                              dpi=300 if ext == '.png' else None, bbox_inches='tight')
+                plt.close(fig)
+                
+                logging.info("Nature style UpSet plot generated successfully!")
+                
             except Exception as e:
                 logging.warning(f"UpSet failed ({e}), falling back to Venn diagram.")
+                
+                # Nature style Venn diagram
                 try:
                     import matplotlib_venn as venn_lib
                     if len(valid_sets) <= 6:
-                        fig, ax = plt.subplots(figsize=(12, 12))
+                        fig, ax = plt.subplots(figsize=(8, 8))
                         venn_lib.venn(valid_sets, ax=ax, fmt="{size}")
-                        ax.set_title("Gene Intersection (Venn Fallback)", fontsize=16)
-                        save_plot("gene_venn_diagram_fallback.png")
+                        
+                        # Nature style settings
+                        ax.set_title("Gene Set Intersection", fontsize=13, fontweight='bold', pad=20)
+                        for spine in ax.spines.values():
+                            spine.set_visible(False)
+                        
+                        plt.tight_layout()
+                        save_nature_plot("gene_venn_diagram_nature")
                     else:
                         logging.info("Too many sets for Venn, skipping diagram.")
-                except:
-                    pass
+                except Exception as e2:
+                    logging.error(f"Venn diagram also failed: {e2}")
 
     except Exception as e:
         logging.error(f"Consensus analysis failed: {e}")
 
-    # Combined ROC curves
+    # Nature style combined ROC curves
     if roc_data:
-        plt.figure(figsize=(10, 10)); ax = plt.gca(); ax.set_aspect('equal', adjustable='box')
-        colors = {"Elastic_Net": "#E41A1C", "RF_Weighted": "#4DAF4A", "XGBoost": "#984EA3", "Boruta_RF": "#FF7F00"}
-        for name, data in roc_data.items(): 
-            plt.plot(data['fpr'], data['tpr'], color=colors.get(name, 'black'), lw=2, label=f"{name} (AUC = {data['auc']:.3f})")
-        plt.plot([0, 1], [0, 1], color='grey', lw=1, linestyle='--')
-        plt.xlabel("1 - Specificity"); plt.ylabel("Sensitivity")
-        plt.title("Combined ROC Curves (Test Set Performance)")
-        plt.legend(loc="lower right")
-        plt.grid(linestyle=':')
-        save_plot("roc_combined.png")
+        plot_nature_combined_roc(roc_data)
 
-    logging.info("\n=== Analysis Complete: All reports and plots saved to 'results' directory. ===")
+    logging.info("\n=== Analysis Complete: All Nature-style reports and plots saved to 'results' directory. ===")
+    logging.info("Data leakage fixed: preprocessing steps now fitted only on training set, test set transformed independently.")
 
 if __name__ == '__main__':
+
+    # ==============================================================================
+    # Figure 4: Nature style 4-gene ultimate heatmap + box plot
+    # ==============================================================================
+    logging.info("Generating Figure 4: Ultra-High-Confidence 4-Gene Signature (6/6 Consensus)")
+    try:
+        expr_raw = pd.read_csv("72326_50772.csv", index_col=0)
+        labels_df = pd.read_csv("classification_labels_debatched.csv", index_col=0)
+
+        common_samples = expr_raw.columns.intersection(labels_df.index)
+        expr_raw = expr_raw[common_samples]
+        labels_df = labels_df.loc[common_samples]
+
+        group = labels_df['Label'].astype(int).map({0: 'Sensitive', 1: 'Resistant'}).fillna('Unknown')
+        
+        if group.str.contains('Unknown').any():
+            raise ValueError(f"Grouping failed! Unknown label values: {labels_df['Label'][group == 'Unknown'].unique()}")
+        
+        print(f"Grouping successful! Sensitive (0): {(group=='Sensitive').sum()} samples, Resistant (1): {(group=='Resistant').sum()} samples")
+
+        target_genes = ['OAS3', 'IFIT3', 'IFI27', 'EPSTI1']
+        found_genes = []
+        for g in target_genes:
+            candidates = [x for x in expr_raw.index if g.upper() in x.upper() and 'L2' not in x]
+            if not candidates:
+                raise ValueError(f"Gene {g} not found!")
+            exact = [x for x in candidates if x == g]
+            real = exact[0] if exact else candidates[0]
+            found_genes.append(real)
+            print(f"Selected: {g} → {real}")
+
+        expr_4 = expr_raw.loc[found_genes]
+        print(f"Successfully extracted 4 genes, shape: {expr_4.shape}")
+
+        from scipy.stats import mannwhitneyu, zscore
+        from matplotlib.patches import Patch
+        import numpy as np
+        
+        def safe_zscore(x):
+            std = x.std()
+            if std == 0:
+                return np.zeros_like(x)
+            return zscore(x)
+        
+        expr_z = expr_4.T.apply(safe_zscore, axis=0)
+        sample_colors = group.map({'Sensitive': '#1f77b4', 'Resistant': '#d62728'})
+
+        # ==================== Figure 4A: Nature style heatmap ====================
+        g = sns.clustermap(
+            expr_z,
+            cmap="RdBu_r",
+            center=0,
+            vmin=-3, vmax=3,
+            row_cluster=False,
+            col_cluster=True,
+            col_colors=sample_colors,
+            linewidths=0.5,
+            linecolor='lightgray',
+            figsize=(10, 6),
+            cbar_kws={"label": "Z-score Expression", "shrink": 0.8},
+            xticklabels=False,
+            yticklabels=True
+        )
+        
+        # Nature style settings
+        g.ax_heatmap.set_title("4-Gene Signature Expression Heatmap", 
+                               fontsize=13, fontweight='bold', pad=20)
+        g.ax_heatmap.set_ylabel("Genes", fontsize=12)
+        g.ax_heatmap.set_xlabel("Samples", fontsize=12)
+        
+        # Set tick label size
+        g.ax_heatmap.set_yticklabels(g.ax_heatmap.get_yticklabels(), fontsize=10)
+        
+        # Legend
+        handles = [Patch(facecolor='#1f77b4', label='Sensitive'),
+                   Patch(facecolor='#d62728', label='Resistant')]
+        g.ax_heatmap.legend(handles=handles, title="Group", frameon=False, 
+                           fontsize=9, bbox_to_anchor=(0, 1.15), loc='upper left')
+        
+        # Hide heatmap borders
+        for spine in g.ax_heatmap.spines.values():
+            spine.set_visible(False)
+        
+        plt.tight_layout()
+        save_nature_plot("Figure_4A_4_Gene_Heatmap_nature")
+        plt.close('all')
+
+        # ==================== Figure 4B: Nature style box plot ====================
+        expr_melt = expr_4.T.melt(var_name='Gene', value_name='Expression')
+        expr_melt['Group'] = np.repeat(group.values, len(found_genes))
+
+        fig, ax = plt.subplots(figsize=(9, 6))
+        
+        # Nature style box plot
+        sns.boxplot(
+            data=expr_melt, 
+            x='Gene', 
+            y='Expression', 
+            hue='Group',
+            palette={'Sensitive': '#1f77b4', 'Resistant': '#d62728'},
+            linewidth=1.5, 
+            fliersize=3,
+            width=0.7,
+            ax=ax
+        )
+        
+        # Add scatter points to show data distribution
+        sns.stripplot(
+            data=expr_melt,
+            x='Gene',
+            y='Expression',
+            hue='Group',
+            palette={'Sensitive': '#1f77b4', 'Resistant': '#d62728'},
+            dodge=True,
+            alpha=0.4,
+            size=3,
+            jitter=0.2,
+            ax=ax
+        )
+        
+        # Calculate statistical significance
+        y_max = expr_melt['Expression'].max()
+        y_range = y_max - expr_melt['Expression'].min() + 1e-8
+        base_height = y_max + y_range * 0.08
+        offset = y_range * 0.09
+        
+        gene_layer = {gene: 0 for gene in found_genes}
+        
+        def add_annotation(gene_idx, text, is_perfect=False):
+            layer = gene_layer[found_genes[gene_idx]]
+            h = base_height + layer * offset
+            color = 'purple' if is_perfect else 'black'
+            weight = 'bold' if is_perfect else 'normal'
+            size = 12 if is_perfect else 11
+            ax.text(gene_idx, h, text, ha='center', va='bottom',
+                    fontsize=size, fontweight=weight, color=color)
+            gene_layer[found_genes[gene_idx]] += 1
+
+        for i, gene in enumerate(found_genes):
+            s = expr_melt[(expr_melt['Gene'] == gene) & (expr_melt['Group'] == 'Sensitive')]['Expression']
+            r = expr_melt[(expr_melt['Gene'] == gene) & (expr_melt['Group'] == 'Resistant')]['Expression']
+
+            if len(s) == 0 or len(r) == 0 or s.nunique() <= 1 or r.nunique() <= 1:
+                if (s == 0).all() or (r == 0).all() or s.std() == 0 or r.std() == 0:
+                    add_annotation(i, "Perfect Separation", is_perfect=True)
+                else:
+                    add_annotation(i, "N/A", is_perfect=False)
+            else:
+                p = mannwhitneyu(s, r, alternative='two-sided').pvalue
+                if p < 0.001:
+                    add_annotation(i, "***", is_perfect=False)
+                elif p < 0.01:
+                    add_annotation(i, "**", is_perfect=False)
+                elif p < 0.05:
+                    add_annotation(i, "*", is_perfect=False)
+                else:
+                    add_annotation(i, "ns", is_perfect=False)
+
+        # Nature style settings
+        ax.set_title("Expression of 4 Ultra-High-Confidence Genes (6/6 Consensus)", 
+                    fontsize=13, fontweight='bold', pad=20)
+        ax.set_ylabel("Log₂ Expression", fontsize=12)
+        ax.set_xlabel("Gene", fontsize=12)
+        
+        # Hide top and right borders
+        for spine in ["top", "right"]:
+            ax.spines[spine].set_visible(False)
+        
+        # Legend handling
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles[:2], labels[:2], title="Group", frameon=False, 
+                 fontsize=9, title_fontsize=10)
+        
+        plt.tight_layout()
+        save_nature_plot("Figure_4B_4_Gene_Boxplot_nature")
+        plt.close('all')
+        
+        logging.info("Figure 4A & 4B generated successfully in Nature style!")
+
+    except Exception as e:
+        logging.error(f"Figure 4 failed: {e}")
+        import traceback
+        traceback.print_exc()
+
     main()

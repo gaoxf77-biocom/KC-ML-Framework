@@ -27,17 +27,15 @@ pip install "numpy<1.24"
 
 ## 🚀 Key Features & Performance
 
-**KC-ML enhances feature stability and robustness.** 
-Unlike unweighted models that suffer from performance degradation in small sample sizes, KC-ML maintains high predictive accuracy and stability.
+**KC-ML enhances the stability of features and the cross-cohort generalization capability.** 
+Compared to traditional unweighted algorithms, knowledge-constrained machine learning achieves superior cross-queue generalization in both independent external queues.
 
 <!-- 这里插入 Figure 6：展示硬核实力 -->
 <p align="center">
-  <img src="Figure6_Robustness.png" width="800" alt="Robustness Analysis">
+  <img src="Figure6_Robustness.png" width="800" alt="External Validation">
 </p>
 
-*   **Panel A**: KC-ML reduces the inclusion of potentially unstable or method-specific.
-*   **Panel B**: Superior AUC performance compared to Equal-ML approaches.
-*   **Panel C**: Consistent robustness even with reduced training sample sizes (Ablation study).
+*   Consensus score–dependent predictive performance of KC-ML (orange) and Equal-ML (blue) across two independent external cohorts, GSE81622 (a) and GSE61635 (b).
 
 ---
 ## 2. Equal-weight machine learning (Equal-ML)
@@ -54,16 +52,7 @@ python train_equal_ml.py
 Results are written to the `results/` directory, including:
 - Cross-model feature intersections (UpSet plots)
 - Consensus gene ranking tables
-- Model-specific performance metrics
-
-### External validation (ROC analysis)
-
-```bash
-cd ROC
-python AUC_nature.py
-```
-
-ROC curves and AUC values for the independent validation cohorts **GSE81622** and **GSE61635** are saved to the `external_validation_results_nature/` directory.
+- Model-specific performance metrics (PR, ROC, confusion_matrix)
 
 ---
 
@@ -101,20 +90,29 @@ python kc_ml_training.py
 Results are written to the `results_KC-ML/` directory, including:
 - Knowledge-weighted multi-model feature consensus summaries
 - Feature importance reports
-- Internal validation performance metrics
-
-### External validation (ROC analysis)
-
-```bash
-cd ROC
-python AUC_nature.py
-```
-
-External validation results are saved to the `external_validation_results_nature/` directory.
+- Internal validation performance metrics (PR, ROC, confusion_matrix)
 
 ---
 
-## 4. Input data and reproducibility notes
+## 4. External validation and performance evaluation
+
+Using two independent external datasets GSE81622 and GSE61635
+
+```bash
+cd analyze_consensus_scores
+python analyze_consensus_scores.py
+```
+
+### Outputs
+
+Results are written to the `ablation_results/` directory, including:
+- Consensus score analysis results
+- Effect size analysis results
+- Performance summary
+
+---
+
+## 5. Input data and reproducibility notes
 
 - Input expression matrices should follow a **gene × sample** format, consistent with the manuscript.
 - All transcriptomic datasets used in the study are publicly available from GEO under the accession numbers reported in the paper.
@@ -123,16 +121,10 @@ External validation results are saved to the `external_validation_results_nature
 
 ---
 
-## 5. Scope of the repository
+## 6. Scope of the repository
 
 Included:
 - Equal-weight machine learning (Equal-ML)
 - Knowledge-constrained feature weighting
 - KC-ML training and external validation
 
-Not included:
-- Nomogram construction
-- Decision curve analysis (DCA)
-- Figure-level plotting scripts for ablation or robustness analyses
-
-These analyses are described in the manuscript and Supplementary Methods but are not required to reproduce the primary methodological findings.
